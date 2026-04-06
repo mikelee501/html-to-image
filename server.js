@@ -12,26 +12,30 @@ app.post('/screenshot', async (req, res) => {
     });
     const page = await browser.newPage();
     await page.setViewport({ width, height: 800 });
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.setContent(html, { waitUntil: 'load', timeout: 120000 });
     
-    // Wait for all images to load
+    // Wait for all images to decode
     await page.evaluate(async () => {
       const imgs = Array.from(document.querySelectorAll('img'));
       await Promise.all(imgs.map(img => {
-        if (img.complete) return;
+        if (img.complete && img.naturalHeight > 0) return;
         return new Promise((resolve) => {
           img.onload = resolve;
           img.onerror = resolve;
-          setTimeout(resolve, 10000);
+          setTimeout(resolve, 15000);
         });
       }));
     });
     
-    // Extra wait for rendering
-    await new Promise(r => setTimeout(r, 2000));
+    // Extra buffer for rendering
+    await new Promise(r => setTimeout(r, 3000));
     
     const fullHeight = await page.evaluate(() => document.body.scrollHeight);
     await page.setViewport({ width, height: fullHeight });
+    
+    // One more wait after viewport resize
+    await new Promise(r => setTimeout(r, 1000));
+    
     const buffer = await page.screenshot({ type: 'jpeg', quality: 95, fullPage: true });
     res.set('Content-Type', 'image/jpeg');
     res.send(buffer);
