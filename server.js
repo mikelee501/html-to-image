@@ -1,7 +1,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer-core');
 const app = express();
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '200mb' }));
 
 app.post('/screenshot', async (req, res) => {
   const { html, width = 1000 } = req.body;
