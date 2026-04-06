@@ -8,12 +8,12 @@ app.post('/screenshot', async (req, res) => {
   let browser;
   try {
     browser = await puppeteer.launch({
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+      executablePath: '/usr/bin/chromium',
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
     await page.setViewport({ width, height: 800 });
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
     const fullHeight = await page.evaluate(() => document.body.scrollHeight);
     await page.setViewport({ width, height: fullHeight });
     const buffer = await page.screenshot({ type: 'jpeg', quality: 95, fullPage: true });
