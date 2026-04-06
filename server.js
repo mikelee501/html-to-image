@@ -13,6 +13,23 @@ app.post('/screenshot', async (req, res) => {
     const page = await browser.newPage();
     await page.setViewport({ width, height: 800 });
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+    
+    // Wait for all images to load
+    await page.evaluate(async () => {
+      const imgs = Array.from(document.querySelectorAll('img'));
+      await Promise.all(imgs.map(img => {
+        if (img.complete) return;
+        return new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+          setTimeout(resolve, 10000);
+        });
+      }));
+    });
+    
+    // Extra wait for rendering
+    await new Promise(r => setTimeout(r, 2000));
+    
     const fullHeight = await page.evaluate(() => document.body.scrollHeight);
     await page.setViewport({ width, height: fullHeight });
     const buffer = await page.screenshot({ type: 'jpeg', quality: 95, fullPage: true });
