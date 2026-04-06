@@ -28,25 +28,33 @@ app.post('/screenshot', async (req, res) => {
 
     await new Promise(r => setTimeout(r, 5000));
 
-    const fullHeight = await page.evaluate(() => {
-      return Math.max(
-        document.body.scrollHeight,
-        document.body.offsetHeight,
-        document.documentElement.scrollHeight,
-        document.documentElement.offsetHeight
-      );
+    const contentHeight = await page.evaluate(() => {
+      const body = document.body;
+      const lastChild = body.lastElementChild;
+      if (lastChild) {
+        const rect = lastChild.getBoundingClientRect();
+        return Math.ceil(rect.bottom);
+      }
+      return body.scrollHeight;
     });
 
-    await page.setViewport({ width, height: fullHeight });
-    await new Promise(r => setTimeout(r, 2000));
+    const screenshot = await page.screenshot({
+      type: 'jpeg',
+      quality: 95,
+      clip: {
+        x: 0,
+        y: 0,
+        width: width,
+        height: contentHeight
+      }
+    });
 
-    const screenshot = await page.screenshot({ type: 'jpeg', quality: 95, fullPage: true });
     const base64String = Buffer.from(screenshot).toString('base64');
 
     res.json({
       image: base64String,
       width: width,
-      height: fullHeight
+      height: contentHeight
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
