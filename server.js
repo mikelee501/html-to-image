@@ -11,12 +11,9 @@ app.post('/screenshot', async (req, res) => {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
-    
-    // Set a tall initial viewport so content doesn't get cut
     await page.setViewport({ width, height: 5000 });
     await page.setContent(html, { waitUntil: 'load', timeout: 120000 });
     
-    // Wait for all images to fully decode
     await page.evaluate(async () => {
       const imgs = Array.from(document.querySelectorAll('img'));
       await Promise.all(imgs.map(img => {
@@ -29,10 +26,8 @@ app.post('/screenshot', async (req, res) => {
       }));
     });
     
-    // Wait extra for layout reflow
     await new Promise(r => setTimeout(r, 5000));
     
-    // Now measure the real height
     const fullHeight = await page.evaluate(() => {
       return Math.max(
         document.body.scrollHeight,
@@ -42,20 +37,17 @@ app.post('/screenshot', async (req, res) => {
       );
     });
     
-    // Set viewport to actual content height
     await page.setViewport({ width, height: fullHeight });
-    
-    // One more wait after resize
     await new Promise(r => setTimeout(r, 2000));
     
-    const buffer = await page.screenshot({ 
-      type: 'jpeg', 
-      quality: 95, 
-      fullPage: true 
-    });
+    const buffer = await page.screenshot({ type: 'jpeg', quality: 95, fullPage: true });
     
-    res.set('Content-Type', 'image/jpeg');
-    res.send(buffer);
+    // Return as JSON with base64 — n8n handles this properly
+    res.json({
+      image: buffer.toString('base64'),
+      width: width,
+      height: fullHeight
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {
