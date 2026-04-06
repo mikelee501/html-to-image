@@ -11,15 +11,17 @@ app.post('/screenshot', async (req, res) => {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
-    await page.setViewport({ width, height: 800 });
+    
+    // Set a tall initial viewport so content doesn't get cut
+    await page.setViewport({ width, height: 5000 });
     await page.setContent(html, { waitUntil: 'load', timeout: 120000 });
     
-    // Wait for all images to decode
+    // Wait for all images to fully decode
     await page.evaluate(async () => {
       const imgs = Array.from(document.querySelectorAll('img'));
       await Promise.all(imgs.map(img => {
         if (img.complete && img.naturalHeight > 0) return;
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           img.onload = resolve;
           img.onerror = resolve;
           setTimeout(resolve, 15000);
@@ -27,16 +29,31 @@ app.post('/screenshot', async (req, res) => {
       }));
     });
     
-    // Extra buffer for rendering
-    await new Promise(r => setTimeout(r, 3000));
+    // Wait extra for layout reflow
+    await new Promise(r => setTimeout(r, 5000));
     
-    const fullHeight = await page.evaluate(() => document.body.scrollHeight);
+    // Now measure the real height
+    const fullHeight = await page.evaluate(() => {
+      return Math.max(
+        document.body.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.scrollHeight,
+        document.documentElement.offsetHeight
+      );
+    });
+    
+    // Set viewport to actual content height
     await page.setViewport({ width, height: fullHeight });
     
-    // One more wait after viewport resize
-    await new Promise(r => setTimeout(r, 1000));
+    // One more wait after resize
+    await new Promise(r => setTimeout(r, 2000));
     
-    const buffer = await page.screenshot({ type: 'jpeg', quality: 95, fullPage: true });
+    const buffer = await page.screenshot({ 
+      type: 'jpeg', 
+      quality: 95, 
+      fullPage: true 
+    });
+    
     res.set('Content-Type', 'image/jpeg');
     res.send(buffer);
   } catch (err) {
