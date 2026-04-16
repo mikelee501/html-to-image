@@ -1,0 +1,6 @@
+services:
+  html-to-image:
+    build: .
+    ports:
+      - "3100:3100"
+    shm_size: '2gb'
